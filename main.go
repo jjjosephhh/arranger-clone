@@ -30,12 +30,13 @@ const (
 )
 
 type Player struct {
-	x             int
-	y             int
-	nextX         int
-	nextY         int
-	direction     PlayerDirection
-	prevDirection PlayerDirection
+	x                 int
+	y                 int
+	nextX             int
+	nextY             int
+	direction         PlayerDirection
+	prevDirection     PlayerDirection
+	adjacentPositions map[int]bool
 }
 
 func (p *Player) Update() *Player {
@@ -63,6 +64,7 @@ func (p *Player) Update() *Player {
 
 	if newDirection != None {
 		p.direction = newDirection
+		p.FindCellsAlongMovement(newDirection)
 
 		switch {
 		case p.nextX > (constants.GRID_COLS-1)*constants.CELL_SIDE:
@@ -111,12 +113,14 @@ func (p *Player) Update() *Player {
 			if p.y <= p.nextY {
 				p.y = p.nextY
 				p.direction = None
+				p.ResetCellsAlongMovement()
 			}
 		case Down:
 			p.y += 10
 			if p.y >= p.nextY {
 				p.y = p.nextY
 				p.direction = None
+				p.ResetCellsAlongMovement()
 			}
 		case Left:
 			p.x -= 10
@@ -124,6 +128,7 @@ func (p *Player) Update() *Player {
 				p.x = p.nextX
 				p.prevDirection = p.direction
 				p.direction = None
+				p.ResetCellsAlongMovement()
 			}
 		case Right:
 			p.x += 10
@@ -131,6 +136,7 @@ func (p *Player) Update() *Player {
 				p.x = p.nextX
 				p.prevDirection = p.direction
 				p.direction = None
+				p.ResetCellsAlongMovement()
 			}
 		}
 	}
@@ -149,6 +155,35 @@ func (p *Player) Update() *Player {
 	}
 
 	return playerOther
+}
+
+func (p *Player) FindCellsAlongMovement(newDirection PlayerDirection) {
+	keyRow := p.y / constants.CELL_SIDE
+	keyCol := p.x / constants.CELL_SIDE
+	p.ResetCellsAlongMovement()
+	switch {
+	case newDirection == Left || newDirection == Right:
+		for col := 0; col < constants.GRID_COLS; col++ {
+			p.adjacentPositions[p.GetAlongMovementIndex(keyRow, col)] = true
+		}
+	case newDirection == Up || newDirection == Down:
+		for row := 0; row < constants.GRID_ROWS; row++ {
+			p.adjacentPositions[p.GetAlongMovementIndex(row, keyCol)] = true
+		}
+	}
+}
+
+func (p *Player) ResetCellsAlongMovement() {
+	p.adjacentPositions = map[int]bool{}
+}
+
+func (p *Player) IsCellAlongMovement(row, col int) bool {
+	key := p.GetAlongMovementIndex(row, col)
+	return p.adjacentPositions[key]
+}
+
+func (p *Player) GetAlongMovementIndex(row, col int) int {
+	return 100000*row + col
 }
 
 func NewPlayer(x, y int) *Player {
@@ -291,6 +326,15 @@ func main() {
 				}
 				grass01Origin := rl.NewVector2(0, 0)
 				rl.DrawTexturePro(grassAll, grass01SourceRec, grass01DestRec, grass01Origin, 0, rl.White)
+				if player.IsCellAlongMovement(gridRow, gridCol) {
+					rl.DrawRectangleLines(
+						int32(gridCol*constants.CELL_SIDE),
+						int32(gridRow*constants.CELL_SIDE),
+						constants.CELL_SIDE,
+						constants.CELL_SIDE,
+						rl.Beige,
+					)
+				}
 			}
 		}
 
@@ -319,6 +363,20 @@ func main() {
 			} else {
 				fmt.Println("Should be drawing playerOther running")
 				spriteSheetPlayerRun.Draw(destRec, playerOther.direction == Left || (playerOther.direction != Right && playerOther.prevDirection == Left))
+			}
+		}
+
+		for gridRow := 0; gridRow < constants.GRID_ROWS; gridRow++ {
+			for gridCol := 0; gridCol < constants.GRID_COLS; gridCol++ {
+				if player.IsCellAlongMovement(gridRow, gridCol) {
+					rl.DrawRectangleLines(
+						int32(gridCol*constants.CELL_SIDE),
+						int32(gridRow*constants.CELL_SIDE),
+						constants.CELL_SIDE,
+						constants.CELL_SIDE,
+						rl.Beige,
+					)
+				}
 			}
 		}
 
