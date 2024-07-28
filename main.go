@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"jjjosephhh.com/arranger-clone/constants"
 )
@@ -37,6 +35,7 @@ type Player struct {
 	direction         PlayerDirection
 	prevDirection     PlayerDirection
 	adjacentPositions map[int]bool
+	soundMove         *rl.Sound
 }
 
 func (p *Player) Update() *Player {
@@ -46,18 +45,22 @@ func (p *Player) Update() *Player {
 	if p.direction == None && rl.IsKeyPressed(rl.KeyLeft) {
 		p.nextX = p.x - constants.CELL_SIDE
 		newDirection = Left
+		rl.PlaySound(*p.soundMove)
 	}
 	if p.direction == None && rl.IsKeyPressed(rl.KeyRight) {
 		p.nextX = p.x + constants.CELL_SIDE
 		newDirection = Right
+		rl.PlaySound(*p.soundMove)
 	}
 	if p.direction == None && rl.IsKeyPressed(rl.KeyUp) {
 		p.nextY = p.y - constants.CELL_SIDE
 		newDirection = Up
+		rl.PlaySound(*p.soundMove)
 	}
 	if p.direction == None && rl.IsKeyPressed(rl.KeyDown) {
 		p.nextY = p.y + constants.CELL_SIDE
 		newDirection = Down
+		rl.PlaySound(*p.soundMove)
 	}
 
 	var playerOther *Player
@@ -186,7 +189,7 @@ func (p *Player) GetAlongMovementIndex(row, col int) int {
 	return 100000*row + col
 }
 
-func NewPlayer(x, y int) *Player {
+func NewPlayer(x, y int, soundMove *rl.Sound) *Player {
 	return &Player{
 		x:             x,
 		y:             y,
@@ -194,6 +197,7 @@ func NewPlayer(x, y int) *Player {
 		nextY:         y,
 		direction:     None,
 		prevDirection: Right,
+		soundMove:     soundMove,
 	}
 }
 
@@ -266,6 +270,14 @@ func main() {
 	rl.InitWindow(800, 800, "raylib [core] example - basic window")
 	defer rl.CloseWindow()
 
+	// Initialize audio device
+	rl.InitAudioDevice()
+	defer rl.CloseAudioDevice()
+
+	// Load sound
+	sound := rl.LoadSound("assets/Bubble 1.wav")
+	defer rl.UnloadSound(sound)
+
 	spriteSheetPlayerIdle := NewSpriteSheet(
 		"assets/free-pixel-art-tiny-hero-sprites/2 Owlet_Monster/Owlet_Monster_Idle_4.png",
 		constants.FRAME_SPEED, 1, 4, 32, 32,
@@ -278,7 +290,7 @@ func main() {
 	)
 	defer spriteSheetPlayerRun.UnloadTexture()
 
-	player := NewPlayer(0, 0)
+	player := NewPlayer(0, 0, &sound)
 	var playerOther *Player
 
 	grassAll := rl.LoadTexture("assets/gdaseljori7b1.png")
@@ -297,11 +309,9 @@ func main() {
 	for !rl.WindowShouldClose() {
 
 		if playerTmp := player.Update(); playerTmp != nil {
-			fmt.Println("playerTmp was created")
 			playerOther = playerTmp
 		}
 		if playerOther != nil {
-			fmt.Println("playerOther:::", playerOther.x, playerOther.nextX)
 			playerOther.Update()
 		}
 
@@ -358,10 +368,8 @@ func main() {
 				float32(constants.CELL_SIDE-2*constants.PLAYER_SPRITESHEET_OFFSET),
 			)
 			if playerOther.direction == None {
-				fmt.Println("Should be drawing playerOther idle")
 				spriteSheetPlayerIdle.Draw(destRec, playerOther.prevDirection == Left)
 			} else {
-				fmt.Println("Should be drawing playerOther running")
 				spriteSheetPlayerRun.Draw(destRec, playerOther.direction == Left || (playerOther.direction != Right && playerOther.prevDirection == Left))
 			}
 		}
